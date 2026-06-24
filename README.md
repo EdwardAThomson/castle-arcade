@@ -19,7 +19,7 @@ runs even from `file://`), the handheld casing image, and a `carts/` folder of
 
 | File | Title | Players |
 | --- | --- | --- |
-| `arena.cpc` | **PALMBLAST** (Bomberman-style arena) | 2 |
+| `palmblast.cpc` | **PALMBLAST** (Bomberman-style arena) | 2 |
 | `pong.cpc` | Pong | 1 |
 | `snake.cpc` | Snake | 1 |
 
@@ -62,3 +62,9 @@ The engine + cartridges are built in the
 [`fantasy-16-console`](https://github.com/EdwardAThomson/fantasy-16-console) repo
 (`npm run bundle`). To update this site, copy the rebuilt `dist/castlepalm.js`
 (and any changed `carts/*.cpc`) over, then commit + push.
+
+## License
+
+[PolyForm Noncommercial 1.0.0](LICENSE.md) — free to use, modify, and share for
+**noncommercial** purposes (hobby, learning, personal play); commercial use
+requires permission. © 2026 Edward Thomson.

@@ -33,7 +33,7 @@
 
 <div id="bar">
   <span class="lbl">Cartridge:</span>
-  <button class="cart" data-cart="arena">PALMBLAST (2P)</button>
+  <button class="cart" data-cart="palmblast">PALMBLAST (2P)</button>
   <button class="cart" data-cart="pong">Pong</button>
   <button class="cart" data-cart="snake">Snake</button>
   <label class="load" title="Load a CastlePalm cartridge file (.cpc)">Load cartridge… <input type="file" id="file" accept=".cpc,.cplm,application/octet-stream"></label>
@@ -52,7 +52,7 @@
   <span>· gamepads auto-map to P1/P2</span>
 </div>
 
-<script src="dist/castlepalm.js?v=1"></script>
+<script src="dist/castlepalm.js?v=2"></script>
 <script>
 'use strict'
 // CastleStation — the stationary TV-console shell for CastlePalm cartridges.
@@ -98,10 +98,10 @@ document.getElementById('file').onchange = e => {
   r.readAsArrayBuffer(f)
 }
 
-// default to the 2-player flagship; #pong / #snake / #arena override
+// default to the 2-player flagship; #pong / #snake / #palmblast override
 if (window.CastlePalm && CastlePalm.carts) {
   const h = location.hash.replace('#', '')
-  pick(CastlePalm.carts[h] ? h : 'arena')
+  pick(CastlePalm.carts[h] ? h : 'palmblast')
 } else { blank(); now.textContent = 'bundle not loaded — run "npm run bundle", then hard-refresh' }
 
 // --- keyboard: two players on one keyboard ---
