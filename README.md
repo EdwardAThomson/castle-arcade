@@ -47,20 +47,12 @@ It's self-contained (carts are embedded in the engine), so **just open
 python3 -m http.server   # then open http://localhost:8000
 ```
 
-## Deploy (Cloudflare Pages)
+## Host it yourself
 
-1. Push this repo to GitHub.
-2. Cloudflare Pages → **Create project** → connect the repo.
-3. Framework preset **None**, build command **(empty)**, output directory **`/`**.
-4. **Custom domains** → add the subdomain (e.g. `castle.octonion.io`).
-
-Every push to the production branch redeploys.
-
-## Updating the engine
-
-The engine + cartridges are built in the `fantasy-16-console` repo (private)
-via `npm run bundle`. To update this site, copy the rebuilt `dist/castlepalm.js`
-(and any changed `carts/*.cpc`) over, then commit + push.
+This is a fully static, self-contained site — **no build step, no server code, no
+secrets or accounts required.** Everything needed to run is in this repo. Serve the
+files on any static host (GitHub Pages, Netlify, Cloudflare Pages, your own web
+server…), or just open `index.html` locally.
 
 ## License
 

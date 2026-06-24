@@ -1,3 +1,6 @@
 .DS_Store
 .vscode/
 node_modules/
+
+# maintainer-only notes (keep local)
+*.local.md
