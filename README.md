@@ -1,7 +1,7 @@
 # Castle Arcade
 
 A small browser arcade for the **CastlePalm** fantasy 16-bit console (the 16-bit
-successor to [Dragon Palm](https://github.com/EdwardAThomson/dragon-palm-arcade)) —
+successor to [Dragon Palm](https://github.com/0xe25f/dragon-palm)) —
 pick a cartridge and play. Two front-ends share one machine:
 
 - **`index.html`** — the **CastlePalm** handheld (portrait casing, on-screen D-pad
@@ -58,9 +58,8 @@ Every push to the production branch redeploys.
 
 ## Updating the engine
 
-The engine + cartridges are built in the
-[`fantasy-16-console`](https://github.com/EdwardAThomson/fantasy-16-console) repo
-(`npm run bundle`). To update this site, copy the rebuilt `dist/castlepalm.js`
+The engine + cartridges are built in the `fantasy-16-console` repo (private)
+via `npm run bundle`. To update this site, copy the rebuilt `dist/castlepalm.js`
 (and any changed `carts/*.cpc`) over, then commit + push.
 
 ## License
