@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en-GB">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CastleStation</title>
+<style>
+  :root { color-scheme: dark }
+  html,body{height:100%;margin:0;background:radial-gradient(120% 120% at 50% 0%,#23262f 0%,#0e0f13 70%);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+    font:14px/1.4 system-ui,sans-serif;color:#cdd2da;user-select:none;-webkit-user-select:none}
+  /* cartridge loader bar */
+  #bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  #bar .lbl{opacity:.65}
+  #bar button,#bar .load{background:#2a2c34;color:#e8eaf0;border:1px solid #454852;border-radius:6px;padding:5px 12px;cursor:pointer;font:inherit}
+  #bar button.active{background:#ff2e3b;border-color:#ff2e3b;color:#fff;font-weight:700}
+  #bar button:hover,#bar .load:hover{border-color:#7a808c}
+  #bar input{display:none}
+  /* the TV: thick bezel + screen */
+  #tv{position:relative;background:linear-gradient(#1c1d22,#0d0e11);padding:26px 26px 16px;border-radius:18px;
+    box-shadow:0 24px 60px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.05);border:1px solid #000}
+  #screen{display:block;width:960px;height:672px;max-width:92vw;max-height:62vh;background:#000;
+    image-rendering:pixelated;border-radius:6px;box-shadow:inset 0 0 0 2px #000,0 0 26px rgba(90,140,255,.12);touch-action:none}
+  /* brand plate */
+  #plate{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:12px}
+  #plate b{font-weight:800;letter-spacing:1.5px;color:#eef1f6;font-size:15px}
+  #plate .tag{opacity:.5;font-size:11px;letter-spacing:.5px}
+  #led{width:9px;height:9px;border-radius:50%;background:#ff2e3b;box-shadow:0 0 6px 1px #e60021}
+  /* controls legend */
+  #keys{display:flex;gap:26px;opacity:.8;font-size:12px}
+  #keys b{color:#9fd0ff;font-weight:600}
+  kbd{background:#23252c;border:1px solid #3a3d46;border-bottom-width:2px;border-radius:4px;padding:1px 5px;font:11px ui-monospace,monospace;color:#dfe3ea}
+</style>
+
+<div id="bar">
+  <span class="lbl">Cartridge:</span>
+  <button class="cart" data-cart="arena">PALMBLAST (2P)</button>
+  <button class="cart" data-cart="pong">Pong</button>
+  <button class="cart" data-cart="snake">Snake</button>
+  <label class="load" title="Load a CastlePalm cartridge file (.cpc)">Load cartridge… <input type="file" id="file" accept=".cpc,.cplm,application/octet-stream"></label>
+  <span id="now" class="lbl"></span>
+  <a href="index.html" style="margin-left:8px;color:#9fd0ff;text-decoration:none;border:1px solid #3a4d6a;border-radius:6px;padding:4px 11px;font:13px system-ui,sans-serif">🎮 CastlePalm handheld →</a>
+</div>
+
+<div id="tv">
+  <canvas id="screen" width="320" height="224"></canvas>
+</div>
+<div id="plate"><i id="led"></i><b>CASTLESTATION</b><span class="tag">16-BIT · runs CastlePalm cartridges</span></div>
+
+<div id="keys">
+  <span>🟢 <b>P1</b> <kbd>W A S D</kbd> move · <kbd>F</kbd> bomb · <kbd>Q</kbd> start</span>
+  <span>🔴 <b>P2</b> <kbd>← ↑ → ↓</kbd> move · <kbd>.</kbd> bomb · <kbd>Enter</kbd> start</span>
+  <span>· gamepads auto-map to P1/P2</span>
+</div>
+
+<script src="dist/castlepalm.js?v=1"></script>
+<script>
+'use strict'
+// CastleStation — the stationary TV-console shell for CastlePalm cartridges.
+// Same core as the handheld (index.html); this shell adds a big integer-scaled
+// screen, a TWO-player input map (P1 keyboard / P2 keyboard), and Gamepad API.
+const W = 320, H = 224
+const screen = document.getElementById('screen')
+const ctx = screen.getContext('2d', { alpha: false })
+const image = ctx.createImageData(W, H)
+const out = new Uint32Array(image.data.buffer)
+const led = document.getElementById('led'), now = document.getElementById('now'), bar = document.getElementById('bar')
+
+let sys = null, cartBytes = null, power = 1
+// per-pad keyboard input words (bit layout = MMIO INPUT: U1 D2 L4 R8 A16 B32 X64 Y128 Start256)
+const key = [0, 0]
+
+// --- Web Audio (host-side; core stays deterministic) ---
+let actx = null, playTime = 0
+function unlockAudio() {
+  if (!actx) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; actx = new AC(); playTime = actx.currentTime }
+  if (actx.state === 'suspended') actx.resume()
+}
+function playAudio(samples, rate) {
+  if (!actx || actx.state !== 'running') return
+  const buf = actx.createBuffer(1, samples.length, rate); buf.copyToChannel(samples, 0)
+  const src = actx.createBufferSource(); src.buffer = buf; src.connect(actx.destination)
+  if (playTime < actx.currentTime) playTime = actx.currentTime
+  src.start(playTime); playTime += buf.duration
+}
+
+function blank() { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H) }
+function boot(bytes) { cartBytes = bytes; sys = new CastlePalm.System(bytes); power = 1; led.style.opacity = 1 }
+function setActive(name) { for (const b of bar.querySelectorAll('button.cart')) b.classList.toggle('active', b.dataset.cart === name) }
+function pick(name) {
+  if (!(window.CastlePalm && CastlePalm.carts && CastlePalm.carts[name])) return
+  boot(CastlePalm.carts[name]); setActive(name); now.textContent = ''
+}
+for (const b of bar.querySelectorAll('button.cart')) b.onclick = () => pick(b.dataset.cart)
+document.getElementById('file').onchange = e => {
+  const f = e.target.files[0]; if (!f) return
+  const r = new FileReader()
+  r.onload = () => { try { boot(new Uint8Array(r.result)); setActive(null); now.textContent = '▸ ' + f.name } catch (err) { now.textContent = 'load failed: ' + err.message } }
+  r.readAsArrayBuffer(f)
+}
+
+// default to the 2-player flagship; #pong / #snake / #arena override
+if (window.CastlePalm && CastlePalm.carts) {
+  const h = location.hash.replace('#', '')
+  pick(CastlePalm.carts[h] ? h : 'arena')
+} else { blank(); now.textContent = 'bundle not loaded — run "npm run bundle", then hard-refresh' }
+
+// --- keyboard: two players on one keyboard ---
+const MAP1 = { w: 1, W: 1, s: 2, S: 2, a: 4, A: 4, d: 8, D: 8, f: 16, F: 16, g: 32, G: 32, r: 64, R: 64, t: 128, T: 128, q: 256, Q: 256 }
+const MAP2 = { ArrowUp: 1, ArrowDown: 2, ArrowLeft: 4, ArrowRight: 8, '.': 16, '/': 32, ';': 64, "'": 128, Enter: 256 }
+function edit(e, down) {
+  if (down) unlockAudio()
+  let hit = false
+  if (e.key in MAP1) { key[0] = down ? key[0] | MAP1[e.key] : key[0] & ~MAP1[e.key]; hit = true }
+  if (e.key in MAP2) { key[1] = down ? key[1] | MAP2[e.key] : key[1] & ~MAP2[e.key]; hit = true }
+  if (hit) e.preventDefault()
+}
+onkeydown = e => edit(e, true)
+onkeyup = e => edit(e, false)
+
+// --- Gamepad API: OR a connected pad into its player's word ---
+function padWord(i) {
+  const gp = (navigator.getGamepads ? navigator.getGamepads() : [])[i]
+  if (!gp) return 0
+  const b = gp.buttons, ax = gp.axes, B = n => b[n] && b[n].pressed
+  let w = 0
+  if (B(12) || ax[1] < -0.4) w |= 1
+  if (B(13) || ax[1] > 0.4) w |= 2
+  if (B(14) || ax[0] < -0.4) w |= 4
+  if (B(15) || ax[0] > 0.4) w |= 8
+  if (B(0)) w |= 16; if (B(1)) w |= 32; if (B(2)) w |= 64; if (B(3)) w |= 128
+  if (B(9)) w |= 256; if (B(8)) w |= 512
+  return w
+}
+
+function frame() {
+  requestAnimationFrame(frame)
+  if (!power || !sys) return
+  sys.setInputs(0, key[0] | padWord(0))
+  sys.setInputs(1, key[1] | padWord(1))
+  out.set(sys.runFrame())
+  ctx.putImageData(image, 0, 0)
+  if (sys.audio) playAudio(sys.audio, sys.audioRate)
+}
+blank(); frame()
+</script>
+</html>

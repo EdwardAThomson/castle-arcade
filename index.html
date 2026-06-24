@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en-GB">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CastlePalm</title>
+<style>
+html,body{height:100%;margin:0;background:#15161b;display:grid;place-items:center;user-select:none;-webkit-user-select:none}
+#d{position:relative;width:512px;height:812px;background:#e9e2d2 url(castle_palm_2.png) 0 0/100% 100% no-repeat;border-radius:24px}
+#s{position:absolute;left:72px;top:103px;width:368px;height:258px;background:#000;image-rendering:pixelated;touch-action:none}
+#l{position:absolute;left:81px;top:85px;width:14px;height:14px;border-radius:50%;background:#2a0506;opacity:.85}
+#l.on{background:#ff2e3b;box-shadow:0 0 4px 1px #e60021}
+b{position:absolute;touch-action:none;display:block}
+body.debug b{outline:2px solid rgba(255,40,60,.9);background:rgba(255,40,60,.12)}
+body.debug #s{outline:2px solid rgba(40,140,255,.9)}
+#bar{position:fixed;top:6px;left:0;right:0;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;color:#cdd2da;font:13px system-ui,sans-serif}
+#bar .lbl{opacity:.7}
+#bar button,#bar .load{background:#2a2c34;color:#e8eaf0;border:1px solid #454852;border-radius:6px;padding:4px 11px;cursor:pointer;font:inherit}
+#bar button.active{background:#ff2e3b;border-color:#ff2e3b;color:#fff;font-weight:700}
+#bar button:hover,#bar .load:hover{border-color:#7a808c}
+#bar input{display:none}
+</style>
+
+<div id="bar">
+  <span class="lbl">Cartridge:</span>
+  <button class="cart" data-cart="pong">Pong</button>
+  <button class="cart" data-cart="snake">Snake</button>
+  <button class="cart" data-cart="arena">Arena</button>
+  <label class="load" title="Load a CastlePalm cartridge file (.cpc)">Load cartridge… <input type="file" id="file" accept=".cpc,.cplm,application/octet-stream"></label>
+  <span id="now" class="lbl"></span>
+  <a href="console.html" style="margin-left:8px;color:#9fd0ff;text-decoration:none;border:1px solid #3a4d6a;border-radius:6px;padding:4px 11px;font:13px system-ui,sans-serif">📺 CastleStation (2-player TV) →</a>
+</div>
+<div id="d">
+  <canvas id="s" width="320" height="224" draggable="false"></canvas>
+  <i id="l"></i>
+
+  <!-- D-pad: Up=1 Down=2 Left=4 Right=8 -->
+  <b data-b="1"   style="left:106px;top:492px;width:44px;height:46px"></b>
+  <b data-b="2"   style="left:106px;top:566px;width:44px;height:46px"></b>
+  <b data-b="4"   style="left:68px;top:530px;width:44px;height:44px"></b>
+  <b data-b="8"   style="left:144px;top:530px;width:46px;height:44px"></b>
+
+  <!-- Face buttons (SNES diamond): X top, Y left, A right, B bottom -->
+  <b data-b="64"  style="left:344px;top:453px;width:56px;height:56px;border-radius:50%"></b><!-- X -->
+  <b data-b="128" style="left:286px;top:513px;width:56px;height:56px;border-radius:50%"></b><!-- Y -->
+  <b data-b="16"  style="left:402px;top:513px;width:56px;height:56px;border-radius:50%"></b><!-- A -->
+  <b data-b="32"  style="left:344px;top:573px;width:56px;height:56px;border-radius:50%"></b><!-- B -->
+
+  <!-- START=256  POWER=512 -->
+  <b data-b="256" style="left:168px;top:666px;width:64px;height:28px;border-radius:14px"></b>
+  <b data-b="512" style="left:268px;top:666px;width:64px;height:28px;border-radius:14px"></b>
+</div>
+
+<script src="dist/castlepalm.js?v=7"></script>
+<script>
+'use strict'
+// CastlePalm shell — boots a CPLM cartridge (Pong by default) on the real
+// CPU + PPU + input bus (dist/castlepalm.js). Drop a .cpc on the screen to load
+// another cart. Press ` for #debug hotspot outlines.
+
+const W = 320, H = 224
+const screen = document.getElementById('s')
+const ctx = screen.getContext('2d', { alpha: false })
+const image = ctx.createImageData(W, H)
+const out = new Uint32Array(image.data.buffer)
+const led = document.getElementById('l')
+
+let sys = null, cartBytes = null, input = 0, power = 1
+
+// Web Audio playback (host-side; the core stays deterministic). Browsers require a
+// user gesture before audio, so the context is created/resumed on first input.
+let actx = null, playTime = 0
+function unlockAudio() {
+  if (!actx) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; actx = new AC(); playTime = actx.currentTime }
+  if (actx.state === 'suspended') actx.resume()
+}
+function playAudio(samples, rate) {
+  if (!actx || actx.state !== 'running') return
+  const buf = actx.createBuffer(1, samples.length, rate)
+  buf.copyToChannel(samples, 0)
+  const src = actx.createBufferSource(); src.buffer = buf; src.connect(actx.destination)
+  if (playTime < actx.currentTime) playTime = actx.currentTime
+  src.start(playTime); playTime += buf.duration
+}
+
+function blank() { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H) }
+function boot(bytes) { cartBytes = bytes; sys = new CastlePalm.System(bytes); power = 1; led.className = 'on' }
+
+// cartridge loader: embedded carts (buttons / keys 1-2) + load any .cpc from disk
+const bar = document.getElementById('bar'), now = document.getElementById('now')
+function setActive(name) { for (const b of bar.querySelectorAll('button.cart')) b.classList.toggle('active', b.dataset.cart === name) }
+function pick(name) {
+  if (!(window.CastlePalm && CastlePalm.carts && CastlePalm.carts[name])) return
+  boot(CastlePalm.carts[name]); setActive(name); now.textContent = ''
+}
+for (const b of bar.querySelectorAll('button.cart')) b.onclick = () => pick(b.dataset.cart)
+document.getElementById('file').onchange = e => {
+  const f = e.target.files[0]; if (!f) return
+  const r = new FileReader()
+  r.onload = () => { try { boot(new Uint8Array(r.result)); setActive(null); now.textContent = '▸ ' + f.name } catch (err) { now.textContent = 'load failed: ' + err.message } }
+  r.readAsArrayBuffer(f)
+}
+
+// boot an embedded cartridge (no fetch -> runs from file://). #snake selects Snake.
+if (window.CastlePalm && CastlePalm.carts) pick(location.hash === '#snake' ? 'snake' : 'pong')
+else { blank(); led.className = ''; now.textContent = 'bundle not loaded — run "npm run bundle", then hard-refresh (Ctrl/Cmd+Shift+R)' }
+
+// 16-bit input word matches the MMIO INPUT layout (MMIO_V0.md)
+const BTN = { POWER: 512 }
+function setBit(bit, down) {
+  if (down) unlockAudio()
+  if (bit === BTN.POWER) {
+    if (down && !(input & BTN.POWER)) {
+      power ^= 1; led.className = power ? 'on' : ''
+      if (power) { if (cartBytes) sys = new CastlePalm.System(cartBytes) } else blank()
+    }
+  }
+  input = down ? input | bit : input & ~bit
+}
+
+const MAP = { ArrowUp: 1, w: 1, W: 1, ArrowDown: 2, s: 2, S: 2, ArrowLeft: 4, a: 4, A: 4, ArrowRight: 8, d: 8, D: 8,
+  z: 16, j: 16, x: 32, k: 32, c: 64, i: 64, v: 128, l: 128, Enter: 256, Backspace: 512 }
+onkeydown = e => { const b = MAP[e.key]; if (b) { e.preventDefault(); setBit(b, true) } if (e.key === '`') document.body.classList.toggle('debug')
+  if (e.key === '1') pick('pong'); if (e.key === '2') pick('snake'); if (e.key === '3') pick('arena') }
+onkeyup = e => { const b = MAP[e.key]; if (b) { e.preventDefault(); setBit(b, false) } }
+
+for (const el of document.querySelectorAll('b')) {
+  const bit = +el.dataset.b
+  el.onpointerdown = e => { e.preventDefault(); el.setPointerCapture(e.pointerId); setBit(bit, true) }
+  el.onpointerup = el.onpointercancel = el.onpointerleave = () => setBit(bit, false)
+}
+if (location.hash === '#debug') document.body.classList.add('debug')
+
+// drag-and-drop a .cpc cartridge
+screen.ondragover = e => e.preventDefault()
+screen.ondrop = e => {
+  e.preventDefault()
+  const f = new FileReader()
+  f.onload = () => boot(new Uint8Array(f.result))
+  f.readAsArrayBuffer(e.dataTransfer.files[0])
+}
+
+function frame() {
+  requestAnimationFrame(frame)
+  if (!power || !sys) return
+  sys.setInput(input)
+  out.set(sys.runFrame())
+  ctx.putImageData(image, 0, 0)
+  if (sys.audio) playAudio(sys.audio, sys.audioRate)
+}
+blank(); frame()
+
+const fit = () => { document.getElementById('d').style.zoom = Math.min(1, innerWidth / 512, innerHeight / 812) }
+addEventListener('resize', fit); fit()
+</script>
+</html>

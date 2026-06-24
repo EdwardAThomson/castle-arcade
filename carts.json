@@ -1,0 +1,5 @@
+[
+  { "file": "arena.cpc", "name": "PALMBLAST (2-player arena)" },
+  { "file": "pong.cpc",  "name": "Pong" },
+  { "file": "snake.cpc", "name": "Snake" }
+]
