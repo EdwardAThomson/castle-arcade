@@ -22,6 +22,7 @@ runs even from `file://`), the handheld casing image, and a `carts/` folder of
 | File | Title | Players |
 | --- | --- | --- |
 | `palmblast.cpc` | **PalmBlast** (Bomberman-style arena) | 2 |
+| `gryphon.cpc` | **Gryphon Ascent** (vertical shoot-'em-up) | 1 |
 | `pong.cpc` | Pong | 1 |
 | `snake.cpc` | Snake | 1 |
 
@@ -39,6 +40,10 @@ round, last knight standing wins.
 
 On the handheld (`index.html`), the on-screen D-pad / A·B·X·Y / Start map to one
 player (arrow keys / `Z X C V` / `Enter` on the keyboard).
+
+**Gryphon Ascent** (1P vertical shooter): **Start** to begin, **D-pad** to fly,
+**A** to fire, **X** to drop a smart-bomb. Shoot enemies, grab gems to build your
+combo multiplier, and dodge the bullet patterns. (Keyboard: arrows + `Z` + `C`.)
 
 ## Run locally
 
