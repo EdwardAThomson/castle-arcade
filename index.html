@@ -2,6 +2,12 @@
 <html lang="en-GB">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#15161b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
 <title>CastlePalm</title>
 <style>
 html,body{height:100%;margin:0;
@@ -14,7 +20,7 @@ html,body{height:100%;margin:0;
 #cartsel{flex:1;min-width:120px;background:#2a2c34;color:#e8eaf0;border:1px solid #454852;border-radius:6px;padding:8px 10px;font:15px system-ui,sans-serif;cursor:pointer}
 #cartbar .load{background:#2a2c34;color:#e8eaf0;border:1px solid #454852;border-radius:6px;padding:8px 12px;cursor:pointer;white-space:nowrap}
 #cartbar .load input{display:none}
-#cartbar .tv{color:#9fd0ff;text-decoration:none;border:1px solid #3a4d6a;border-radius:6px;padding:8px 12px;white-space:nowrap}
+#cartbar .tv{color:#9fd0ff;text-decoration:none;border:1px solid #3a4d6a;border-radius:6px;padding:8px 12px;white-space:nowrap;background:none;cursor:pointer;font:inherit}
 #now{flex-basis:100%;text-align:center;opacity:.6;min-height:0}
 #d{position:relative;width:512px;height:826px;background:url(castle_palm.png) 0 0/100% 100% no-repeat;border-radius:14px;
   -webkit-touch-callout:none}
@@ -34,6 +40,7 @@ body.debug #s{outline:2px solid rgba(40,140,255,.9)}
     <option value="palmblast">PALMBLAST</option>
   </select>
   <label class="load" title="Load a .cpc cartridge from disk">Load… <input type="file" id="file" accept=".cpc,.cplm,application/octet-stream"></label>
+  <button id="fs" class="tv" title="Fullscreen (hides the browser bars)">⛶</button>
   <a class="tv" href="console.html" title="CastleStation — the TV-console version: big screen, 2-player. Same cartridges.">📺 TV</a>
   <span id="now"></span>
 </div>
@@ -163,12 +170,24 @@ function frame(t) {
 }
 blank(); requestAnimationFrame(frame)
 
-// scale the device to fill the page width (Dragon Palm approach: innerHeight, not
-// visualViewport — visualViewport excludes the URL bar and shrank the device).
-const fit = () => {
-  const barH = document.getElementById('cartbar').offsetHeight + 14
-  document.getElementById('d').style.zoom = Math.min(1, innerWidth / 512, (innerHeight - barH) / 826)
+// fullscreen toggle (Android Chrome hides the URL/nav bars; iOS uses Add to Home Screen)
+document.getElementById('fs').onclick = () => {
+  const d = document
+  if (d.fullscreenElement || d.webkitFullscreenElement) { (d.exitFullscreen || d.webkitExitFullscreen).call(d) }
+  else { const e = d.documentElement; (e.requestFullscreen || e.webkitRequestFullscreen || (() => {})).call(e) }
+  setTimeout(fit, 250)
 }
-addEventListener('resize', fit); addEventListener('orientationchange', fit); fit()
+
+// scale the device to fill the viewport. Use the LARGEST height the browser
+// reports (innerHeight under-reports on some mobile browsers, which shrank the
+// device); recompute on every event that can change the viewport.
+function fit() {
+  const vh = Math.max(innerHeight, document.documentElement.clientHeight, window.visualViewport ? visualViewport.height : 0)
+  const barH = document.getElementById('cartbar').offsetHeight + 14
+  document.getElementById('d').style.zoom = Math.min(1, innerWidth / 512, (vh - barH) / 826)
+}
+addEventListener('resize', fit); addEventListener('orientationchange', fit); addEventListener('load', fit)
+if (window.visualViewport) visualViewport.addEventListener('resize', fit)
+fit()
 </script>
 </html>
