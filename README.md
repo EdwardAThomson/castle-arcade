@@ -21,7 +21,7 @@ runs even from `file://`), the handheld casing image, and a `carts/` folder of
 
 | File | Title | Players |
 | --- | --- | --- |
-| `palmblast.cpc` | **PALMBLAST** (Bomberman-style arena) | 2 |
+| `palmblast.cpc` | **PalmBlast** (Bomberman-style arena) | 2 |
 | `pong.cpc` | Pong | 1 |
 | `snake.cpc` | Snake | 1 |
 
@@ -30,7 +30,7 @@ to run any `.cpc` from disk, and drag-and-drop onto the screen.
 
 ## Controls
 
-**PALMBLAST** (best on CastleStation, `console.html`): press **Start** to begin a
+**PalmBlast** (best on CastleStation, `console.html`): press **Start** to begin a
 round, last knight standing wins.
 
 - 🟢 **P1** — `W A S D` move · `F` drop bomb · `Q` start
