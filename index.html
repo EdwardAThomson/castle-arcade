@@ -4,7 +4,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>CastlePalm</title>
 <style>
-html,body{height:100%;margin:0;background:#15161b;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+html{height:100%}
+body{margin:0;position:fixed;inset:0;overflow:hidden;touch-action:none;overscroll-behavior:none;
+  background:#15161b;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
   font:13px system-ui,sans-serif;color:#cdd2da;
   user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 /* cartridge selector — visible above the device on mobile (no hidden top bar) */
@@ -15,7 +17,7 @@ html,body{height:100%;margin:0;background:#15161b;display:flex;flex-direction:co
 #cartbar .tv{color:#9fd0ff;text-decoration:none;border:1px solid #3a4d6a;border-radius:6px;padding:8px 12px;white-space:nowrap}
 #now{flex-basis:100%;text-align:center;opacity:.6;min-height:0}
 #d{position:relative;width:512px;height:816px;background:url(castle_palm.png) 0 0/100% 100% no-repeat;border-radius:26px;
-  -webkit-touch-callout:none}
+  box-shadow:inset 0 0 0 4px #15161b;-webkit-touch-callout:none}
 #s{position:absolute;left:75px;top:75px;width:385px;height:268px;background:#000;image-rendering:pixelated;
   touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 #l{position:absolute;left:85px;top:56px;width:15px;height:15px;border-radius:50%;background:#2a0506;opacity:.85}
@@ -57,7 +59,7 @@ body.debug #s{outline:2px solid rgba(40,140,255,.9)}
   <b data-b="512" style="left:280px;top:660px;width:67px;height:29px;border-radius:15px"></b>
 </div>
 
-<script src="dist/castlepalm.js?v=13"></script>
+<script src="dist/castlepalm.js?v=14"></script>
 <script>
 'use strict'
 // CastlePalm handheld shell. Boots a CPLM cartridge on the real CPU+PPU+input bus.
@@ -161,11 +163,15 @@ function frame(t) {
 }
 blank(); requestAnimationFrame(frame)
 
-// scale the device to fit, leaving room for the cartridge bar
+// scale the device to fit the viewport (no page scroll), leaving room for the bar
 const fit = () => {
-  const barH = document.getElementById('cartbar').offsetHeight + 20
-  document.getElementById('d').style.zoom = Math.min(1, innerWidth / 512, (innerHeight - barH) / 816)
+  const vw = (window.visualViewport && visualViewport.width) || innerWidth
+  const vh = (window.visualViewport && visualViewport.height) || innerHeight
+  const barH = document.getElementById('cartbar').offsetHeight + 18
+  document.getElementById('d').style.zoom = Math.min(1, vw / 512, (vh - barH) / 816)
 }
-addEventListener('resize', fit); fit()
+addEventListener('resize', fit); addEventListener('orientationchange', fit)
+if (window.visualViewport) visualViewport.addEventListener('resize', fit)
+fit()
 </script>
 </html>
