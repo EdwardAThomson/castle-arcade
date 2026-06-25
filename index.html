@@ -1,73 +1,77 @@
 <!doctype html>
 <html lang="en-GB">
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>CastlePalm</title>
 <style>
-html,body{height:100%;margin:0;background:#15161b;display:grid;place-items:center;user-select:none;-webkit-user-select:none}
-#d{position:relative;width:512px;height:812px;background:#e9e2d2 url(castle_palm.png) 0 0/100% 100% no-repeat;border-radius:24px}
-#s{position:absolute;left:72px;top:103px;width:368px;height:258px;background:#000;image-rendering:pixelated;touch-action:none}
-#l{position:absolute;left:81px;top:85px;width:14px;height:14px;border-radius:50%;background:#2a0506;opacity:.85}
+html,body{height:100%;margin:0;background:#15161b;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  font:13px system-ui,sans-serif;color:#cdd2da;
+  user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+/* cartridge selector — visible above the device on mobile (no hidden top bar) */
+#cartbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;width:100%;max-width:512px;box-sizing:border-box;padding:0 8px}
+#cartsel{flex:1;min-width:120px;background:#2a2c34;color:#e8eaf0;border:1px solid #454852;border-radius:6px;padding:8px 10px;font:15px system-ui,sans-serif;cursor:pointer}
+#cartbar .load{background:#2a2c34;color:#e8eaf0;border:1px solid #454852;border-radius:6px;padding:8px 12px;cursor:pointer;white-space:nowrap}
+#cartbar .load input{display:none}
+#cartbar .tv{color:#9fd0ff;text-decoration:none;border:1px solid #3a4d6a;border-radius:6px;padding:8px 12px;white-space:nowrap}
+#now{flex-basis:100%;text-align:center;opacity:.6;min-height:0}
+#d{position:relative;width:512px;height:816px;background:url(castle_palm.png) 0 0/100% 100% no-repeat;border-radius:26px;
+  -webkit-touch-callout:none}
+#s{position:absolute;left:75px;top:75px;width:385px;height:268px;background:#000;image-rendering:pixelated;
+  touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+#l{position:absolute;left:85px;top:56px;width:15px;height:15px;border-radius:50%;background:#2a0506;opacity:.85}
 #l.on{background:#ff2e3b;box-shadow:0 0 4px 1px #e60021}
 b{position:absolute;touch-action:none;display:block}
 body.debug b{outline:2px solid rgba(255,40,60,.9);background:rgba(255,40,60,.12)}
 body.debug #s{outline:2px solid rgba(40,140,255,.9)}
-#bar{position:fixed;top:6px;left:0;right:0;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;color:#cdd2da;font:13px system-ui,sans-serif}
-#bar .lbl{opacity:.7}
-#bar button,#bar .load{background:#2a2c34;color:#e8eaf0;border:1px solid #454852;border-radius:6px;padding:4px 11px;cursor:pointer;font:inherit}
-#bar button.active{background:#ff2e3b;border-color:#ff2e3b;color:#fff;font-weight:700}
-#bar button:hover,#bar .load:hover{border-color:#7a808c}
-#bar input{display:none}
 </style>
 
-<div id="bar">
-  <span class="lbl">Cartridge:</span>
-  <button class="cart" data-cart="pong">Pong</button>
-  <button class="cart" data-cart="snake">Snake</button>
-  <button class="cart" data-cart="palmblast">PALMBLAST</button>
-  <label class="load" title="Load a CastlePalm cartridge file (.cpc)">Load cartridge… <input type="file" id="file" accept=".cpc,.cplm,application/octet-stream"></label>
-  <span id="now" class="lbl"></span>
-  <a href="console.html" title="CastleStation — the TV-console version of this machine: a big screen with two-player controls (keyboard split + gamepads). Same cartridges." style="margin-left:8px;color:#9fd0ff;text-decoration:none;border:1px solid #3a4d6a;border-radius:6px;padding:4px 11px;font:13px system-ui,sans-serif">📺 CastleStation (TV · 2-player) →</a>
+<div id="cartbar">
+  <select id="cartsel">
+    <option value="pong">Pong</option>
+    <option value="snake">Snake</option>
+    <option value="palmblast">PALMBLAST</option>
+  </select>
+  <label class="load" title="Load a .cpc cartridge from disk">Load… <input type="file" id="file" accept=".cpc,.cplm,application/octet-stream"></label>
+  <a class="tv" href="console.html" title="CastleStation — the TV-console version: big screen, 2-player. Same cartridges.">📺 TV</a>
+  <span id="now"></span>
 </div>
+
 <div id="d">
   <canvas id="s" width="320" height="224" draggable="false"></canvas>
   <i id="l"></i>
 
   <!-- D-pad: Up=1 Down=2 Left=4 Right=8 -->
-  <b data-b="1"   style="left:106px;top:492px;width:44px;height:46px"></b>
-  <b data-b="2"   style="left:106px;top:566px;width:44px;height:46px"></b>
-  <b data-b="4"   style="left:68px;top:530px;width:44px;height:44px"></b>
-  <b data-b="8"   style="left:144px;top:530px;width:46px;height:44px"></b>
+  <b data-b="1"   style="left:111px;top:479px;width:46px;height:48px"></b>
+  <b data-b="2"   style="left:111px;top:556px;width:46px;height:48px"></b>
+  <b data-b="4"   style="left:71px;top:519px;width:46px;height:46px"></b>
+  <b data-b="8"   style="left:150px;top:519px;width:48px;height:46px"></b>
 
   <!-- Face buttons (SNES diamond): X top, Y left, A right, B bottom -->
-  <b data-b="64"  style="left:344px;top:453px;width:56px;height:56px;border-radius:50%"></b><!-- X -->
-  <b data-b="128" style="left:286px;top:513px;width:56px;height:56px;border-radius:50%"></b><!-- Y -->
-  <b data-b="16"  style="left:402px;top:513px;width:56px;height:56px;border-radius:50%"></b><!-- A -->
-  <b data-b="32"  style="left:344px;top:573px;width:56px;height:56px;border-radius:50%"></b><!-- B -->
+  <b data-b="64"  style="left:360px;top:439px;width:59px;height:58px;border-radius:50%"></b><!-- X -->
+  <b data-b="128" style="left:299px;top:501px;width:59px;height:58px;border-radius:50%"></b><!-- Y -->
+  <b data-b="16"  style="left:420px;top:501px;width:59px;height:58px;border-radius:50%"></b><!-- A -->
+  <b data-b="32"  style="left:360px;top:564px;width:59px;height:58px;border-radius:50%"></b><!-- B -->
 
   <!-- START=256  POWER=512 -->
-  <b data-b="256" style="left:168px;top:666px;width:64px;height:28px;border-radius:14px"></b>
-  <b data-b="512" style="left:268px;top:666px;width:64px;height:28px;border-radius:14px"></b>
+  <b data-b="256" style="left:176px;top:660px;width:67px;height:29px;border-radius:15px"></b>
+  <b data-b="512" style="left:280px;top:660px;width:67px;height:29px;border-radius:15px"></b>
 </div>
 
-<script src="dist/castlepalm.js?v=11"></script>
+<script src="dist/castlepalm.js?v=13"></script>
 <script>
 'use strict'
-// CastlePalm shell — boots a CPLM cartridge (Pong by default) on the real
-// CPU + PPU + input bus (dist/castlepalm.js). Drop a .cpc on the screen to load
-// another cart. Press ` for #debug hotspot outlines.
-
+// CastlePalm handheld shell. Boots a CPLM cartridge on the real CPU+PPU+input bus.
 const W = 320, H = 224
 const screen = document.getElementById('s')
 const ctx = screen.getContext('2d', { alpha: false })
 const image = ctx.createImageData(W, H)
 const out = new Uint32Array(image.data.buffer)
 const led = document.getElementById('l')
+const cartsel = document.getElementById('cartsel'), now = document.getElementById('now')
 
 let sys = null, cartBytes = null, input = 0, power = 1
 
-// Web Audio playback (host-side; the core stays deterministic). Browsers require a
-// user gesture before audio, so the context is created/resumed on first input.
+// Web Audio (host-side; core stays deterministic). Needs a user gesture to start.
 let actx = null, playTime = 0
 function unlockAudio() {
   if (!actx) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; actx = new AC(); playTime = actx.currentTime }
@@ -75,8 +79,7 @@ function unlockAudio() {
 }
 function playAudio(samples, rate) {
   if (!actx || actx.state !== 'running') return
-  const buf = actx.createBuffer(1, samples.length, rate)
-  buf.copyToChannel(samples, 0)
+  const buf = actx.createBuffer(1, samples.length, rate); buf.copyToChannel(samples, 0)
   const src = actx.createBufferSource(); src.buffer = buf; src.connect(actx.destination)
   if (playTime < actx.currentTime) playTime = actx.currentTime
   src.start(playTime); playTime += buf.duration
@@ -84,25 +87,21 @@ function playAudio(samples, rate) {
 
 function blank() { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H) }
 function boot(bytes) { cartBytes = bytes; sys = new CastlePalm.System(bytes); power = 1; led.className = 'on' }
-
-// cartridge loader: embedded carts (buttons / keys 1-2) + load any .cpc from disk
-const bar = document.getElementById('bar'), now = document.getElementById('now')
-function setActive(name) { for (const b of bar.querySelectorAll('button.cart')) b.classList.toggle('active', b.dataset.cart === name) }
 function pick(name) {
   if (!(window.CastlePalm && CastlePalm.carts && CastlePalm.carts[name])) return
-  boot(CastlePalm.carts[name]); setActive(name); now.textContent = ''
+  boot(CastlePalm.carts[name]); cartsel.value = name; now.textContent = ''
 }
-for (const b of bar.querySelectorAll('button.cart')) b.onclick = () => pick(b.dataset.cart)
+cartsel.onchange = () => pick(cartsel.value)
 document.getElementById('file').onchange = e => {
   const f = e.target.files[0]; if (!f) return
   const r = new FileReader()
-  r.onload = () => { try { boot(new Uint8Array(r.result)); setActive(null); now.textContent = '▸ ' + f.name } catch (err) { now.textContent = 'load failed: ' + err.message } }
+  r.onload = () => { try { boot(new Uint8Array(r.result)); now.textContent = '▸ ' + f.name } catch (err) { now.textContent = 'load failed: ' + err.message } }
   r.readAsArrayBuffer(f)
 }
 
-// boot an embedded cartridge (no fetch -> runs from file://). #snake selects Snake.
-if (window.CastlePalm && CastlePalm.carts) pick(location.hash === '#snake' ? 'snake' : 'pong')
-else { blank(); led.className = ''; now.textContent = 'bundle not loaded — run "npm run bundle", then hard-refresh (Ctrl/Cmd+Shift+R)' }
+// boot embedded cart (no fetch -> runs from file://). #snake / #palmblast select.
+if (window.CastlePalm && CastlePalm.carts) { const h = location.hash.replace('#', ''); pick(CastlePalm.carts[h] ? h : 'pong') }
+else { blank(); led.className = ''; now.textContent = 'bundle not loaded — run "npm run bundle", then hard-refresh' }
 
 // 16-bit input word matches the MMIO INPUT layout (MMIO_V0.md)
 const BTN = { POWER: 512 }
@@ -130,6 +129,10 @@ for (const el of document.querySelectorAll('b')) {
 }
 if (location.hash === '#debug') document.body.classList.add('debug')
 
+// kill the mobile long-press "save image" / context menu (it interrupted gameplay)
+document.addEventListener('contextmenu', e => e.preventDefault())
+screen.ondragstart = screen.onselectstart = e => e.preventDefault()
+
 // drag-and-drop a .cpc cartridge
 screen.ondragover = e => e.preventDefault()
 screen.ondrop = e => {
@@ -139,17 +142,30 @@ screen.ondrop = e => {
   f.readAsArrayBuffer(e.dataTransfer.files[0])
 }
 
-function frame() {
+// fixed 60 Hz step — games assume 60fps, so don't run faster on 120Hz+ displays
+let acc = 0, last
+function frame(t) {
   requestAnimationFrame(frame)
   if (!power || !sys) return
-  sys.setInput(input)
-  out.set(sys.runFrame())
-  ctx.putImageData(image, 0, 0)
-  if (sys.audio) playAudio(sys.audio, sys.audioRate)
+  if (last === undefined) last = t
+  acc += t - last; last = t
+  if (acc > 250) acc = 250                 // clamp after a stall / backgrounding
+  let drew = false
+  while (acc >= 16.6667) {
+    acc -= 16.6667
+    sys.setInput(input)
+    out.set(sys.runFrame()); drew = true
+    if (sys.audio) playAudio(sys.audio, sys.audioRate)
+  }
+  if (drew) ctx.putImageData(image, 0, 0)
 }
-blank(); frame()
+blank(); requestAnimationFrame(frame)
 
-const fit = () => { document.getElementById('d').style.zoom = Math.min(1, innerWidth / 512, innerHeight / 812) }
+// scale the device to fit, leaving room for the cartridge bar
+const fit = () => {
+  const barH = document.getElementById('cartbar').offsetHeight + 20
+  document.getElementById('d').style.zoom = Math.min(1, innerWidth / 512, (innerHeight - barH) / 816)
+}
 addEventListener('resize', fit); fit()
 </script>
 </html>

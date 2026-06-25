@@ -52,7 +52,7 @@
   <span>· gamepads auto-map to P1/P2</span>
 </div>
 
-<script src="dist/castlepalm.js?v=5"></script>
+<script src="dist/castlepalm.js?v=6"></script>
 <script>
 'use strict'
 // CastleStation — the stationary TV-console shell for CastlePalm cartridges.
@@ -132,15 +132,25 @@ function padWord(i) {
   return w
 }
 
-function frame() {
+// fixed 60 Hz step — games assume 60fps, so don't run faster on 120Hz+ displays
+let acc = 0, last
+function frame(t) {
   requestAnimationFrame(frame)
   if (!power || !sys) return
-  sys.setInputs(0, key[0] | padWord(0))
-  sys.setInputs(1, key[1] | padWord(1))
-  out.set(sys.runFrame())
-  ctx.putImageData(image, 0, 0)
-  if (sys.audio) playAudio(sys.audio, sys.audioRate)
+  if (last === undefined) last = t
+  acc += t - last; last = t
+  if (acc > 250) acc = 250
+  let drew = false
+  while (acc >= 16.6667) {
+    acc -= 16.6667
+    sys.setInputs(0, key[0] | padWord(0))
+    sys.setInputs(1, key[1] | padWord(1))
+    out.set(sys.runFrame()); drew = true
+    if (sys.audio) playAudio(sys.audio, sys.audioRate)
+  }
+  if (drew) ctx.putImageData(image, 0, 0)
 }
-blank(); frame()
+document.addEventListener('contextmenu', e => e.preventDefault())
+blank(); requestAnimationFrame(frame)
 </script>
 </html>
