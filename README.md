@@ -1,5 +1,7 @@
 # Castle Arcade
 
+<p align="center"><img src="castle_palm.png" alt="The CastlePalm handheld" width="240"></p>
+
 A small browser arcade for the **CastlePalm** fantasy 16-bit console (the 16-bit
 successor to [Dragon Palm](https://github.com/0xe25f/dragon-palm)) —
 pick a cartridge and play. Two front-ends share one machine:
@@ -53,6 +55,16 @@ This is a fully static, self-contained site — **no build step, no server code,
 secrets or accounts required.** Everything needed to run is in this repo. Serve the
 files on any static host (GitHub Pages, Netlify, Cloudflare Pages, your own web
 server…), or just open `index.html` locally.
+
+## Make your own game
+
+CastlePalm is a real, programmable console — not just these three carts. Write your
+own game in assembly, build a `.cpc`, and load it right here (**Load cartridge…** or
+drag it onto the screen). The spec, assembler, worked examples, and a 5-minute
+quickstart live in the **[CastlePalm SDK](https://github.com/EdwardAThomson/castlepalm-sdk)**.
+
+Your games are yours: the engine is noncommercial, but you may distribute and **sell**
+the cartridges you make (see the SDK's Cartridge Exception).
 
 ## License
 
