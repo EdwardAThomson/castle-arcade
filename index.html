@@ -35,11 +35,11 @@ body.debug #s{outline:2px solid rgba(40,140,255,.9)}
 
 <div id="cartbar">
   <select id="cartsel">
-    <option value="pong">Pong</option>
-    <option value="snake">Snake</option>
-    <option value="palmblast">PalmBlast</option>
     <option value="gryphon">Gryphon Ascent</option>
     <option value="oathbound">Oathbound</option>
+    <option value="palmblast">PalmBlast</option>
+    <option value="snake">Snake</option>
+    <option value="pong">Pong</option>
   </select>
   <label class="load" title="Load a .cpc cartridge from disk">Load… <input type="file" id="file" accept=".cpc,.cplm,application/octet-stream"></label>
   <button id="fs" class="tv" title="Fullscreen (hides the browser bars)">⛶</button>
@@ -111,7 +111,7 @@ document.getElementById('file').onchange = e => {
 }
 
 // boot embedded cart (no fetch -> runs from file://). #snake / #palmblast select.
-if (window.CastlePalm && CastlePalm.carts) { const h = location.hash.replace('#', ''); pick(CastlePalm.carts[h] ? h : 'pong') }
+if (window.CastlePalm && CastlePalm.carts) { const h = location.hash.replace('#', ''); pick(CastlePalm.carts[h] ? h : 'gryphon') }
 else { blank(); led.className = ''; now.textContent = 'bundle not loaded — run "npm run bundle", then hard-refresh' }
 
 // 16-bit input word matches the MMIO INPUT layout (MMIO_V0.md)
