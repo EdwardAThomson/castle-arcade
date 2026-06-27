@@ -1,5 +1,6 @@
 [
   { "file": "palmblast.cpc", "name": "PALMBLAST (2-player arena)" },
+  { "file": "streetbrawl.cpc", "name": "Street Brawl" },
   { "file": "pong.cpc",  "name": "Pong" },
   { "file": "snake.cpc", "name": "Snake" }
 ]
