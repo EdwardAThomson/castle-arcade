@@ -50,12 +50,12 @@
 <div id="plate"><i id="led"></i><b>CASTLESTATION</b><span class="tag">16-BIT · runs CastlePalm cartridges</span></div>
 
 <div id="keys">
-  <span>🟢 <b>P1</b> <kbd>W A S D</kbd> move · <kbd>F</kbd> bomb · <kbd>Q</kbd> start</span>
-  <span>🔴 <b>P2</b> <kbd>← ↑ → ↓</kbd> move · <kbd>.</kbd> bomb · <kbd>Enter</kbd> start</span>
+  <span>🟢 <b>P1</b> <kbd>W A S D</kbd> move · <kbd>Z</kbd>A <kbd>X</kbd>B <kbd>C</kbd>X <kbd>V</kbd>Y · <kbd>Q</kbd> start</span>
+  <span>🔴 <b>P2</b> <kbd>← ↑ → ↓</kbd> move · <kbd>.</kbd>A <kbd>/</kbd>B <kbd>;</kbd>X <kbd>'</kbd>Y · <kbd>Enter</kbd> start</span>
   <span>· gamepads auto-map to P1/P2</span>
 </div>
 
-<script src="dist/castlepalm.js?v=30"></script>
+<script src="dist/castlepalm.js?v=36"></script>
 <script>
 'use strict'
 // CastleStation — the stationary TV-console shell for CastlePalm cartridges.
@@ -108,7 +108,11 @@ if (window.CastlePalm && CastlePalm.carts) {
 } else { blank(); now.textContent = 'bundle not loaded — run "npm run bundle", then hard-refresh' }
 
 // --- keyboard: two players on one keyboard ---
-const MAP1 = { w: 1, W: 1, s: 2, S: 2, a: 4, A: 4, d: 8, D: 8, f: 16, F: 16, g: 32, G: 32, r: 64, R: 64, t: 128, T: 128, q: 256, Q: 256 }
+// P1 face buttons match the handheld (index.html): A=Z B=X X=C Y=V, so the same key
+// always means the same button across both shells. P1 = left hand (WASD + ZXCV, Start=Q);
+// P2 = right hand (Arrows + . / ; ', Start=Enter), its own cluster by necessity (two
+// players cannot share Arrows/Enter on one keyboard).
+const MAP1 = { w: 1, W: 1, s: 2, S: 2, a: 4, A: 4, d: 8, D: 8, z: 16, Z: 16, x: 32, X: 32, c: 64, C: 64, v: 128, V: 128, q: 256, Q: 256 }
 const MAP2 = { ArrowUp: 1, ArrowDown: 2, ArrowLeft: 4, ArrowRight: 8, '.': 16, '/': 32, ';': 64, "'": 128, Enter: 256 }
 function edit(e, down) {
   if (down) unlockAudio()

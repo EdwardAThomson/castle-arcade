@@ -46,6 +46,7 @@ body.debug #s{outline:2px solid rgba(40,140,255,.9)}
   <button id="fs" class="tv" title="Fullscreen (hides the browser bars)">⛶</button>
   <a class="tv" href="console.html" title="CastleStation — the TV-console version: big screen, 2-player. Same cartridges.">📺 TV</a>
   <span id="now"></span>
+  <span id="keys" style="flex-basis:100%;text-align:center;opacity:.5;font-size:12px">Keys: Arrows / WASD move &middot; Z=A &nbsp;X=B &nbsp;C=X &nbsp;V=Y &middot; Enter=Start &middot; gamepad supported</span>
 </div>
 
 <div id="d">
@@ -69,7 +70,7 @@ body.debug #s{outline:2px solid rgba(40,140,255,.9)}
   <b data-b="512" style="left:255px;top:690px;width:74px;height:40px;border-radius:12px"></b>
 </div>
 
-<script src="dist/castlepalm.js?v=30"></script>
+<script src="dist/castlepalm.js?v=36"></script>
 <script>
 'use strict'
 // CastlePalm handheld shell. Boots a CPLM cartridge on the real CPU+PPU+input bus.
@@ -143,7 +144,9 @@ for (const el of document.querySelectorAll('b')) {
   el.addEventListener('pointerup', e => { e.preventDefault(); setBit(bit, false) })
   el.addEventListener('pointercancel', () => setBit(bit, false))
 }
-if (location.hash === '#debug') document.body.classList.add('debug')
+// debug hit-box overlay: works on load AND when #debug is toggled live (no reload)
+const applyDebug = () => document.body.classList.toggle('debug', location.hash === '#debug')
+applyDebug(); addEventListener('hashchange', applyDebug)
 
 // kill the mobile long-press "save image" / context menu (it interrupted gameplay)
 document.addEventListener('contextmenu', e => e.preventDefault())
