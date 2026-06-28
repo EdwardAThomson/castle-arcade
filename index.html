@@ -34,14 +34,7 @@ body.debug #s{outline:2px solid rgba(40,140,255,.9)}
 </style>
 
 <div id="cartbar">
-  <select id="cartsel">
-    <option value="gryphon">Gryphon Ascent</option>
-    <option value="oathbound">Oathbound</option>
-    <option value="streetbrawl">Street Brawl</option>
-    <option value="palmblast">PalmBlast</option>
-    <option value="snake">Snake</option>
-    <option value="pong">Pong</option>
-  </select>
+  <select id="cartsel"><!-- options built from the bundle's cartList (data-driven) --></select>
   <label class="load" title="Load a .cpc cartridge from disk">Load… <input type="file" id="file" accept=".cpc,.cplm,application/octet-stream"></label>
   <button id="fs" class="tv" title="Fullscreen (hides the browser bars)">⛶</button>
   <a class="tv" href="console.html" title="CastleStation — the TV-console version: big screen, 2-player. Same cartridges.">📺 TV</a>
@@ -70,7 +63,7 @@ body.debug #s{outline:2px solid rgba(40,140,255,.9)}
   <b data-b="512" style="left:255px;top:690px;width:74px;height:40px;border-radius:12px"></b>
 </div>
 
-<script src="dist/castlepalm.js?v=42"></script>
+<script src="dist/castlepalm.js?v=43"></script>
 <script>
 'use strict'
 // CastlePalm handheld shell. Boots a CPLM cartridge on the real CPU+PPU+input bus.
@@ -112,9 +105,13 @@ document.getElementById('file').onchange = e => {
   r.readAsArrayBuffer(f)
 }
 
-// boot embedded cart (no fetch -> runs from file://). #snake / #palmblast select.
-if (window.CastlePalm && CastlePalm.carts) { const h = location.hash.replace('#', ''); pick(CastlePalm.carts[h] ? h : 'gryphon') }
-else { blank(); led.className = ''; now.textContent = 'bundle not loaded — run "npm run bundle", then hard-refresh' }
+// build the cart picker from the bundle, then boot. The picker is data-driven, so it
+// shows exactly the carts in the loaded bundle (WIP carts are only in the dev bundle).
+if (window.CastlePalm && CastlePalm.cartList) {
+  for (const c of CastlePalm.cartList) { const o = document.createElement('option'); o.value = c.id; o.textContent = c.name; cartsel.appendChild(o) }
+  const h = location.hash.replace('#', '')                       // #galechase etc. selects a cart
+  pick(CastlePalm.carts[h] ? h : (CastlePalm.cartList[0] && CastlePalm.cartList[0].id))
+} else { blank(); led.className = ''; now.textContent = 'bundle not loaded — run "npm run bundle", then hard-refresh' }
 
 // 16-bit input word matches the MMIO INPUT layout (MMIO_V0.md)
 const BTN = { POWER: 512 }
