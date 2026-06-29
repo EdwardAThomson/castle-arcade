@@ -7,8 +7,22 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="canonical" href="https://castle.octonion.io/">
 <link rel="apple-touch-icon" href="icon-180.png">
 <title>CastlePalm</title>
+<meta name="description" content="Castle Arcade: a 16-bit fantasy console - play classic-style games in your browser.">
+<!-- Open Graph / Twitter share card -->
+<meta property="og:title" content="Castle Arcade">
+<meta property="og:description" content="16-bit fantasy console - play classic-style games in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://castle.octonion.io/">
+<meta property="og:image" content="https://castle.octonion.io/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Castle Arcade">
+<meta name="twitter:description" content="16-bit fantasy console - play classic-style games in your browser.">
+<meta name="twitter:image" content="https://castle.octonion.io/og.png">
 <style>
 html,body{height:100%;margin:0;
   background:#15161b;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
@@ -63,7 +77,7 @@ body.debug #s{outline:2px solid rgba(40,140,255,.9)}
   <b data-b="512" style="left:255px;top:690px;width:74px;height:40px;border-radius:12px"></b>
 </div>
 
-<script src="dist/castlepalm.js?v=43"></script>
+<script src="dist/castlepalm.js?v=60"></script>
 <script>
 'use strict'
 // CastlePalm handheld shell. Boots a CPLM cartridge on the real CPU+PPU+input bus.

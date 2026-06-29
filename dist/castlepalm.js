@@ -58,6 +58,14 @@ const TABLE = [
   ['STB.idx', 0x1e, ['regs', 'regs']],
   ['STB.abs', 0x1f, ['regs', 'addr24']],
 
+  // --- multiply / divide (Rd,Rs). MUL: 16x16 -> 32-bit, low word -> Rd, high word
+  //     -> R(d+1 mod 8). DIV: 32-bit dividend R(d+1):Rd / Rs -> quotient -> Rd,
+  //     remainder -> R(d+1). See cpu/core.js for flags + div-by-zero behaviour. ---
+  ['MULU', 0x20, ['regs']],
+  ['MULS', 0x21, ['regs']],
+  ['DIVU', 0x22, ['regs']],
+  ['DIVS', 0x23, ['regs']],
+
   // --- arithmetic (16-bit) ---
   ['ADD.r', 0x30, ['regs']],
   ['ADD.i', 0x31, ['regs', 'imm16']],
@@ -271,6 +279,7 @@ function classify(mnem, ops) {
       : mk(`${mnem}.r`, () => [packRegs(d, reg(ops[1]))])
   }
   if (mnem === 'ADC' || mnem === 'SBC' || mnem === 'BIT') return mk(`${mnem}.r`, () => [packRegs(reg(ops[0]), reg(ops[1]))])
+  if (mnem === 'MULU' || mnem === 'MULS' || mnem === 'DIVU' || mnem === 'DIVS') return mk(mnem, () => [packRegs(reg(ops[0]), reg(ops[1]))])
   if (mnem === 'NEG' || mnem === 'NOT' || mnem === 'TST') return mk(mnem, () => [packRegs(reg(ops[0]), 0)])
   if (['SHL', 'SHR', 'SAR'].includes(mnem)) {
     const d = reg(ops[0])
@@ -532,6 +541,7 @@ class CastlePalmCPU {
     const readAddr24 = () => { const t = this.read24(p); p = m24(p + 3); return t }
 
     let next                       // set only by control flow; otherwise = address after operands
+    let cost = 1                    // cycle cost returned to run() (1 default; MUL/DIV are heavier)
     switch (op) {
       case 0x00: break                                                            // NOP
       case 0x01: { readRegs(); const i = readImm16(); R[x] = m16(i); break }       // MOV.i
@@ -557,6 +567,30 @@ class CastlePalmCPU {
       case 0x1d: { readRegs(); const d = readImm8(); this.write8(m24(A[y] + s8(d)), R[x]); break }  // STB.dsp
       case 0x1e: { readRegs(); const m = (this.read8(p) >> 4) & 0xf; p = m24(p + 1); this.write8(m24(A[y] + s16(R[m])), R[x]); break } // STB.idx
       case 0x1f: { readRegs(); const a = readAddr24(); this.write8(a, R[x]); break }                // STB.abs
+
+      // multiply / divide. Operands read before any write (Rs may alias R(d+1)).
+      // MUL: 16x16 -> 32-bit; low word -> Rd, high word -> R(d+1 mod 8). N/Z reflect
+      // the full 32-bit result; V,C cleared. DIV: dividend R(d+1):Rd / Rs -> quotient
+      // -> Rd, remainder -> R(d+1); V set on divide-by-zero or quotient overflow
+      // (result 0 on div-by-zero); N/Z reflect the 16-bit quotient; C cleared.
+      case 0x20: { readRegs(); const hx = (x + 1) & 7, a = R[x], b = R[y]; const P = (a * b) >>> 0    // MULU
+                   R[x] = P & 0xffff; R[hx] = (P >>> 16) & 0xffff
+                   F.z = P === 0; F.n = (P & 0x80000000) !== 0; F.v = false; F.c = false; cost = 8; break }
+      case 0x21: { readRegs(); const hx = (x + 1) & 7, a = s16(R[x]), b = s16(R[y]); const P = a * b   // MULS
+                   R[x] = P & 0xffff; R[hx] = (P >> 16) & 0xffff
+                   F.z = P === 0; F.n = P < 0; F.v = false; F.c = false; cost = 8; break }
+      case 0x22: { readRegs(); const hx = (x + 1) & 7, lo = R[x], hi = R[hx], dv = R[y]                // DIVU
+                   const D = (hi * 65536 + lo) >>> 0
+                   if (dv === 0) { R[x] = 0; R[hx] = 0; F.z = true; F.n = false; F.v = true; F.c = false }
+                   else { const Q = Math.floor(D / dv), Rem = D % dv; F.v = Q > 0xffff
+                          R[x] = Q & 0xffff; R[hx] = Rem & 0xffff; F.z = (Q & 0xffff) === 0; F.n = (Q & 0x8000) !== 0; F.c = false }
+                   cost = 16; break }
+      case 0x23: { readRegs(); const hx = (x + 1) & 7, lo = R[x], hi = s16(R[hx]), dv = s16(R[y])      // DIVS
+                   const D = hi * 65536 + lo
+                   if (dv === 0) { R[x] = 0; R[hx] = 0; F.z = true; F.n = false; F.v = true; F.c = false }
+                   else { const Q = Math.trunc(D / dv), Rem = D - Q * dv; F.v = (Q > 32767 || Q < -32768)
+                          R[x] = Q & 0xffff; R[hx] = Rem & 0xffff; F.z = (Q & 0xffff) === 0; F.n = (Q & 0x8000) !== 0; F.c = false }
+                   cost = 16; break }
 
       case 0x30: { readRegs(); R[x] = this.add16(R[x], R[y]); break }                  // ADD.r
       case 0x31: { readRegs(); const i = readImm16(); R[x] = this.add16(R[x], m16(i)); break } // ADD.i
@@ -627,10 +661,12 @@ class CastlePalmCPU {
 
     this.PC = (next === undefined) ? m24(p) : next
     this.steps++
-    return 1
+    return cost
   }
 
-  run(maxSteps = 1e7) { let n = 0; while (n < maxSteps && !this.halted && !this.waiting) { this.step(); n++ } return n }
+  // `maxSteps` is now a CYCLE budget (most instructions cost 1; MUL/DIV cost more).
+  // Existing carts are unaffected: they all cost 1 and stop at WAIT/HALT well inside it.
+  run(maxSteps = 1e7) { let n = 0; while (n < maxSteps && !this.halted && !this.waiting) { n += this.step() } return n }
 }
 
 module.exports = { CastlePalmCPU, VECTOR_BASE }
@@ -731,6 +767,10 @@ class FantasyPPU {
     this.layers=[this.makeLayer(0),this.makeLayer(1)]
     this.sprites=Array.from({length:FantasyPPU.SPRITE_COUNT},()=>this.makeSprite())
     this.affineLines=Array(FantasyPPU.HEIGHT).fill(null)
+    // affine map geometry + wrap mode (defaults reproduce the legacy 64x64 toroidal map)
+    this.affineMapW=FantasyPPU.MAP_WIDTH
+    this.affineMapH=FantasyPPU.MAP_HEIGHT
+    this.affineWrap=true            // true = repeat (modulo, current behaviour); false = transparent outside
     this.metrics={maxSpritesOnLine:0,droppedSprites:0,visibleSprites:0}
     this.setPalette(0,0,0,0)
   }
@@ -749,6 +789,9 @@ class FantasyPPU {
     this.layers=[this.makeLayer(0),this.makeLayer(1)]
     this.sprites=Array.from({length:FantasyPPU.SPRITE_COUNT},()=>this.makeSprite())
     this.affineLines.fill(null)
+    this.affineMapW=FantasyPPU.MAP_WIDTH
+    this.affineMapH=FantasyPPU.MAP_HEIGHT
+    this.affineWrap=true
     this.setPalette(0,0,0,0)
   }
 
@@ -832,6 +875,33 @@ class FantasyPPU {
     return {colour:this.palette[(entry.palette<<4)|colour],priority:this.layers[layerIndex].basePriority+entry.priority}
   }
 
+  // Affine (Mode-7) sample at world pixel (worldX,worldY). Uses the configurable
+  // affine map size/stride and wrap mode. With the defaults (64x64, repeat) this is
+  // byte-for-byte identical to the sampleLayer path; with wrap disabled a coordinate
+  // whose tile falls outside [0,W) x [0,H) returns null so the backdrop shows through
+  // (the map becomes a single non-repeating island).
+  sampleAffine(layerIndex,worldX,worldY){
+    const W=this.affineMapW,H=this.affineMapH
+    let tileX=Math.floor(worldX/8)
+    let tileY=Math.floor(worldY/8)
+    if(this.affineWrap){
+      tileX=((tileX%W)+W)%W
+      tileY=((tileY%H)+H)%H
+    }else if(tileX<0||tileX>=W||tileY<0||tileY>=H){
+      return null
+    }
+    const raw=this.view.getUint32(FantasyPPU.MAP_OFFSETS[layerIndex]+(tileY*W+tileX)*4,true)
+    const tile=raw&0x7ff,palette=(raw>>>11)&15
+    const hflip=Boolean(raw&(1<<15)),vflip=Boolean(raw&(1<<16)),priority=(raw>>>17)&3
+    let px=((worldX%8)+8)%8
+    let py=((worldY%8)+8)%8
+    if(hflip)px=7-px
+    if(vflip)py=7-py
+    const colour=this.tilePixel(tile,px,py)
+    if(colour===0)return null
+    return {colour:this.palette[(palette<<4)|colour],priority:this.layers[layerIndex].basePriority+priority}
+  }
+
   drawLayerLine(layerIndex,y,pixels,priorities){
     const layer=this.layers[layerIndex]
     if(!layer.enabled)return
@@ -841,7 +911,7 @@ class FantasyPPU {
     for(let x=0;x<FantasyPPU.WIDTH;x++){
       const worldX=layer.affine?sx>>16:x+layer.scrollX
       const worldY=layer.affine?sy>>16:y+layer.scrollY
-      const sample=this.sampleLayer(layerIndex,worldX,worldY)
+      const sample=layer.affine?this.sampleAffine(layerIndex,worldX,worldY):this.sampleLayer(layerIndex,worldX,worldY)
       const out=y*FantasyPPU.WIDTH+x
       if(sample&&sample.priority>=priorities[out]){
         pixels[out]=sample.colour
@@ -1023,6 +1093,7 @@ const REG = {
   AFFINE_CTRL: 0x10101c,  // u16: bit0 enable, bit1 layer (0=BG0,1=BG1), bit2 page (reserved, single-buffered in v0.2)
   AFFINE_FIRST: 0x10101e, // u16 first affine scanline (affine-table row 0 maps to this line)
   AFFINE_LAST: 0x101020,  // u16 last affine scanline (inclusive; informational in v0.2)
+  AFFINE_MAPSZ: 0x101022, // u8 affine map size as log2(tiles/side): 6=64 (default), 7=128
 }
 const c5to8 = c => (c << 3) | (c >> 2)
 
@@ -1038,6 +1109,7 @@ class System {
     this.va = 0; this.pi = 0; this.pl = 0; this.oi = 0
     this.scroll = [0, 0, 0, 0]
     this.affCtrl = 0; this.affFirst = 0; this.affLast = 0   // affine (Mode-7) layer state
+    this.affMapSz = 6                                       // log2 tiles/side (6=64); default keeps the legacy map
     this.oam = new Uint8Array(1024)
     this.dma = { src: 0, dst: 0, len: 0, mode: 0, fill: 0 }
     this.dmaBytes = 0
@@ -1088,6 +1160,8 @@ class System {
       case REG.AFFINE_FIRST + 1: this.affFirst = (this.affFirst & 0x00ff) | (b << 8); return
       case REG.AFFINE_LAST: this.affLast = (this.affLast & 0xff00) | b; return
       case REG.AFFINE_LAST + 1: this.affLast = (this.affLast & 0x00ff) | (b << 8); return
+      case REG.AFFINE_MAPSZ: this.affMapSz = (this.affMapSz & 0xff00) | b; this.applyAffineMapsz(); return
+      case REG.AFFINE_MAPSZ + 1: this.affMapSz = (this.affMapSz & 0x00ff) | (b << 8); this.applyAffineMapsz(); return
       case REG.DMA_SRC: this.dma.src = (this.dma.src & 0xffff00) | b; return
       case REG.DMA_SRC + 1: this.dma.src = (this.dma.src & 0xff00ff) | (b << 8); return
       case REG.DMA_SRC + 2: this.dma.src = (this.dma.src & 0x00ffff) | (b << 16); return
@@ -1121,11 +1195,19 @@ class System {
     }
   }
 
-  // affine enable/layer select: only the chosen layer samples via affineLines.
+  // affine enable/layer select + wrap mode: only the chosen layer samples via
+  // affineLines. bit3 = transparent-outside (0 = repeat/toroidal, the v0.2 default).
   applyAffineCtrl() {
     const en = this.affCtrl & 1, layer = (this.affCtrl >> 1) & 1
     this.ppu.layers[0].affine = !!(en && layer === 0)
     this.ppu.layers[1].affine = !!(en && layer === 1)
+    this.ppu.affineWrap = !((this.affCtrl >> 3) & 1)
+  }
+
+  // affine map size: byte = log2(tiles per side). 6 -> 64x64 (default), 7 -> 128x128.
+  applyAffineMapsz() {
+    const bits = this.affMapSz & 15, n = bits >= 4 ? (1 << bits) : 64
+    this.ppu.affineMapW = n; this.ppu.affineMapH = n
   }
 
   // one DMA transfer: CPU memory -> VRAM / OAM / palette / affine table, or constant fill.
