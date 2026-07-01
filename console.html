@@ -63,7 +63,7 @@
   <span>· gamepads auto-map to P1/P2</span>
 </div>
 
-<script src="dist/castlepalm.js?v=61"></script>
+<script src="dist/castlepalm.js?v=62"></script>
 <script>
 'use strict'
 // CastleStation — the stationary TV-console shell for CastlePalm cartridges.
@@ -95,7 +95,32 @@ function playAudio(samples, rate) {
 }
 
 function blank() { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H) }
-function boot(bytes) { cartBytes = bytes; sys = new CastlePalm.System(bytes); power = 1; led.style.opacity = 1 }
+// --- cartridge save persistence (Stage A: per-browser, per-profile) ---------
+// The guest game writes a record into save RAM and pokes SAVE_COMMIT; the host just
+// moves that 32 KB blob to/from localStorage, namespaced by a profileId that later
+// becomes an account id without the guest or the key layout changing.
+function profileId() {
+  let id = localStorage.getItem('cp:profile')
+  if (!id) { id = (self.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2); localStorage.setItem('cp:profile', id) }
+  return id
+}
+function saveKey(bytes) {
+  const info = CastlePalm.parseCart(bytes)
+  if (!info || !info.hasSave) return null            // only carts that declare save RAM
+  return `cp:${profileId()}:${info.title}`
+}
+function loadSaveInto(system, bytes) {
+  const key = saveKey(bytes); if (!key) return
+  const b64 = localStorage.getItem(key); if (!b64) return
+  try { const bin = atob(b64), a = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i); system.importSave(a) } catch (e) {}
+}
+function persistSave(system, bytes) {
+  const key = saveKey(bytes); if (!key) return
+  const a = system.exportSave(); let s = ''; for (let i = 0; i < a.length; i++) s += String.fromCharCode(a[i])
+  try { localStorage.setItem(key, btoa(s)) } catch (e) {}
+}
+
+function boot(bytes) { cartBytes = bytes; sys = new CastlePalm.System(bytes); loadSaveInto(sys, bytes); power = 1; led.style.opacity = 1 }
 function setActive(name) { for (const b of bar.querySelectorAll('button.cart')) b.classList.toggle('active', b.dataset.cart === name) }
 function pick(name) {
   if (!(window.CastlePalm && CastlePalm.carts && CastlePalm.carts[name])) return
@@ -167,6 +192,7 @@ function frame(t) {
     sys.setInputs(0, key[0] | padWord(0))
     sys.setInputs(1, key[1] | padWord(1))
     out.set(sys.runFrame()); drew = true
+    if (sys.consumeSaveDirty()) persistSave(sys, cartBytes)
     if (sys.audio) playAudio(sys.audio, sys.audioRate)
   }
   if (drew) ctx.putImageData(image, 0, 0)
