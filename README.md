@@ -22,6 +22,8 @@ runs even from `file://`), the handheld casing image, and a `carts/` folder of
 | File | Title | Players |
 | --- | --- | --- |
 | `palmblast.cpc` | **PalmBlast** (Bomberman-style arena) | 2 |
+| `swornrivals.cpc` | **Sworn Rivals** (1v1 fighter with secret oaths) | 1–2 |
+| `siegestone.cpc` | **Siegestone** (versus falling-stone puzzle) | 1–2 |
 | `gryphon.cpc` | **Gryphon Ascent** (horizontal shoot-'em-up) | 1 |
 | `oathbound.cpc` | **Oathbound** (side-scrolling platformer) | 1 |
 | `pong.cpc` | Pong | 1 |
@@ -50,6 +52,16 @@ build your combo multiplier, and dodge the bullet patterns. (Keyboard: arrows + 
 **B** to jump (hold for height; Down+B drops through one-way platforms), **A** to run,
 **Y** to swing your sword, **X** to throw a dagger. Clear each zone by reaching the
 portcullis; beat the bosses. (Keyboard: arrows + `X` jump / `Z` run / `V` sword / `C` dagger.)
+
+**Sworn Rivals** (1v1 fighter; 2P best on CastleStation): **Start** to begin. **D-pad**
+walks, crouches and jumps (hold away from the rival to block), **A** punches, **B** kicks.
+Each round, swear a secret oath with a face button: keep it to build your Oath meter,
+break it and the meter goes to your rival. Specials: ↓↘→+A Gate Rush, →↓↘+A Palm Rise,
+↓↘→+B Oath Surge with a full meter.
+
+**Siegestone** (versus puzzle): on the title, **A** = Solo Ladder vs CPU, **B** = 2 Players.
+**Left/Right** shift the falling pair, **Down** soft-drops, **A** turns clockwise, **X/Y**
+counter-clockwise, **B** looses your catapult basket at the rival. **Start** pauses.
 
 ## Run locally
 
