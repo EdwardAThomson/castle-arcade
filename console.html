@@ -60,10 +60,10 @@
 <div id="keys">
   <span>🟢 <b>P1</b> <kbd>W A S D</kbd> move · <kbd>Z</kbd>A <kbd>X</kbd>B <kbd>C</kbd>X <kbd>V</kbd>Y · <kbd>Q</kbd> start</span>
   <span>🔴 <b>P2</b> <kbd>← ↑ → ↓</kbd> move · <kbd>.</kbd>A <kbd>/</kbd>B <kbd>;</kbd>X <kbd>'</kbd>Y · <kbd>Enter</kbd> start</span>
-  <span>· gamepads auto-map to P1/P2</span>
+  <span>· gamepads auto-map to P1/P2 · <kbd>R</kbd> record input</span>
 </div>
 
-<script src="dist/castlepalm.js?v=70"></script>
+<script src="dist/castlepalm.js?v=71"></script>
 <script>
 'use strict'
 // CastleStation — the stationary TV-console shell for CastlePalm cartridges.
@@ -76,6 +76,7 @@ const image = ctx.createImageData(W, H)
 const out = new Uint32Array(image.data.buffer)
 const led = document.getElementById('led'), now = document.getElementById('now'), bar = document.getElementById('bar')
 
+let rec = null, curCart = ''            // input recording (R), see recToggle
 let sys = null, cartBytes = null, power = 1
 // per-pad keyboard input words (bit layout = MMIO INPUT: U1 D2 L4 R8 A16 B32 X64 Y128 Start256)
 const key = [0, 0]
@@ -120,17 +121,17 @@ function persistSave(system, bytes) {
   try { localStorage.setItem(key, btoa(s)) } catch (e) {}
 }
 
-function boot(bytes) { cartBytes = bytes; sys = new CastlePalm.System(bytes); loadSaveInto(sys, bytes); power = 1; led.style.opacity = 1 }
+function boot(bytes) { rec = null; cartBytes = bytes; sys = new CastlePalm.System(bytes); loadSaveInto(sys, bytes); power = 1; led.style.opacity = 1 }
 function setActive(name) { for (const b of bar.querySelectorAll('button.cart')) b.classList.toggle('active', b.dataset.cart === name) }
 function pick(name) {
   if (!(window.CastlePalm && CastlePalm.carts && CastlePalm.carts[name])) return
-  boot(CastlePalm.carts[name]); setActive(name); now.textContent = ''
+  boot(CastlePalm.carts[name]); curCart = name; setActive(name); now.textContent = ''
 }
 // cart buttons (with their onclick) are built data-driven in the boot block below
 document.getElementById('file').onchange = e => {
   const f = e.target.files[0]; if (!f) return
   const r = new FileReader()
-  r.onload = () => { try { boot(new Uint8Array(r.result)); setActive(null); now.textContent = '▸ ' + f.name } catch (err) { now.textContent = 'load failed: ' + err.message } }
+  r.onload = () => { try { boot(new Uint8Array(r.result)); curCart = f.name.replace(/\.cpc$/i, ''); setActive(null); now.textContent = '▸ ' + f.name } catch (err) { now.textContent = 'load failed: ' + err.message } }
   r.readAsArrayBuffer(f)
 }
 
@@ -160,7 +161,7 @@ function edit(e, down) {
   if (e.key in MAP2) { key[1] = down ? key[1] | MAP2[e.key] : key[1] & ~MAP2[e.key]; hit = true }
   if (hit) e.preventDefault()
 }
-onkeydown = e => edit(e, true)
+onkeydown = e => { edit(e, true); if ((e.key === 'r' || e.key === 'R') && !e.repeat) recToggle() }
 onkeyup = e => edit(e, false)
 
 // --- Gamepad API: OR a connected pad into its player's word ---
@@ -178,6 +179,24 @@ function padWord(i) {
   return w
 }
 
+// --- R records your play for tools/capture.js (docs/CAPTURE.md): it restarts the cart
+// from power-on, logs the pad words fed to every frame, and R again downloads a
+// .cpin.json that the capture tool replays frame-exactly into stills or video.
+function recToggle() {
+  if (!cartBytes) return
+  if (!rec) {
+    sys = new CastlePalm.System(cartBytes); loadSaveInto(sys, cartBytes); power = 1
+    rec = new CastlePalm.InputRecorder(cartBytes, { cart: curCart, title: (CastlePalm.parseCart(cartBytes) || {}).title, save: sys.exportSave() })
+    now.textContent = '\u25cf REC (R to stop)'
+  } else {
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(rec)], { type: 'application/json' }))
+    a.download = (rec.cart || 'cart') + '-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.cpin.json'
+    a.click()
+    now.textContent = 'recorded ' + rec.frames + ' frames'; rec = null
+  }
+}
+
 // fixed 60 Hz step — games assume 60fps, so don't run faster on 120Hz+ displays
 let acc = 0, last
 function frame(t) {
@@ -189,8 +208,9 @@ function frame(t) {
   let drew = false
   while (acc >= 16.6667) {
     acc -= 16.6667
-    sys.setInputs(0, key[0] | padWord(0))
-    sys.setInputs(1, key[1] | padWord(1))
+    const p1 = key[0] | padWord(0), p2 = key[1] | padWord(1)
+    sys.setInputs(0, p1); sys.setInputs(1, p2)
+    if (rec) rec.push(p1 & 0xffff, p2 & 0xffff)
     out.set(sys.runFrame()); drew = true
     if (sys.consumeSaveDirty()) persistSave(sys, cartBytes)
     if (sys.audio) playAudio(sys.audio, sys.audioRate)
