@@ -37,6 +37,8 @@
   #plate{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:12px}
   #plate b{font-weight:800;letter-spacing:1.5px;color:#eef1f6;font-size:15px}
   #plate .tag{opacity:.5;font-size:11px;letter-spacing:.5px}
+  #reset{margin-left:6px;background:#2a2c34;color:#e8eaf0;border:1px solid #454852;border-radius:12px;padding:2px 11px;cursor:pointer;font:700 11px system-ui,sans-serif;letter-spacing:1px}
+  #reset:hover{border-color:#7a808c}
   #led{width:9px;height:9px;border-radius:50%;background:#ff2e3b;box-shadow:0 0 6px 1px #e60021}
   /* controls legend: one card per player, each row = what it does, then key -> console button */
   #keys{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 14px;margin-top:-5px;font-size:13px;color:#cdd2da}
@@ -69,7 +71,7 @@
 <div id="tv">
   <canvas id="screen" width="320" height="224"></canvas>
 </div>
-<div id="plate"><i id="led"></i><b>CASTLESTATION</b><span class="tag">16-BIT · runs CastlePalm cartridges</span></div>
+<div id="plate"><i id="led"></i><b>CASTLESTATION</b><span class="tag">16-BIT · runs CastlePalm cartridges</span><button id="reset" title="Restart the current game from power-on (Backspace, or Select on a gamepad). Saves are kept.">⟲ RESET</button></div>
 
 <div id="keys">
   <div class="pl">
@@ -78,11 +80,11 @@
     <span class="what">Buttons</span><span class="row"><span class="map"><kbd>Z</kbd><i>→</i><span class="btn bA" title="A button">A</span></span><span class="map"><kbd>X</kbd><i>→</i><span class="btn bB" title="B button">B</span></span><span class="map"><kbd>C</kbd><i>→</i><span class="btn bX" title="X button">X</span></span><span class="map"><kbd>V</kbd><i>→</i><span class="btn bY" title="Y button">Y</span></span></span>
   </div>
   <div class="pl">
-    <h3><span class="dot" style="background:#ff3b47"></span>PLAYER 2 <small>keyboard</small></h3>
+    <h3><span class="dot" style="background:#ff3b47"></span>PLAYER 2 <small>keyboard · in 2-player games, pick 2P on the title screen</small></h3>
     <span class="what">Move</span><span class="row"><kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd><span class="what" style="margin-left:14px">Start</span><kbd>Enter</kbd></span>
     <span class="what">Buttons</span><span class="row"><span class="map"><kbd>.</kbd><i>→</i><span class="btn bA" title="A button">A</span></span><span class="map"><kbd>/</kbd><i>→</i><span class="btn bB" title="B button">B</span></span><span class="map"><kbd>;</kbd><i>→</i><span class="btn bX" title="X button">X</span></span><span class="map"><kbd>'</kbd><i>→</i><span class="btn bY" title="Y button">Y</span></span></span>
   </div>
-  <div class="note">🎮 Gamepads connect as Player 1 and Player 2 automatically · <kbd>R</kbd> start/stop recording your inputs</div>
+  <div class="note"><kbd>Backspace</kbd> or gamepad Select: reset the game · 🎮 Gamepads connect as Player 1 and Player 2 automatically · <kbd>R</kbd> record your inputs</div>
 </div>
 
 <script src="dist/castlepalm.js?v=72"></script>
@@ -143,6 +145,10 @@ function persistSave(system, bytes) {
   try { localStorage.setItem(key, btoa(s)) } catch (e) {}
 }
 
+// Reset = the handheld's POWER (bit 512) cycled off+on: reboot the cart, keep its save.
+// Backspace, gamepad Select or the Reset button. Bit 512 is never passed to the cart.
+function reset() { if (cartBytes) { boot(cartBytes); now.textContent = 'reset' } }
+document.getElementById('reset').onclick = e => { e.currentTarget.blur(); reset() }
 function boot(bytes) { rec = null; cartBytes = bytes; sys = new CastlePalm.System(bytes); loadSaveInto(sys, bytes); power = 1; led.style.opacity = 1 }
 function setActive(name) { for (const b of bar.querySelectorAll('button.cart')) b.classList.toggle('active', b.dataset.cart === name) }
 function pick(name) {
@@ -183,7 +189,11 @@ function edit(e, down) {
   if (e.key in MAP2) { key[1] = down ? key[1] | MAP2[e.key] : key[1] & ~MAP2[e.key]; hit = true }
   if (hit) e.preventDefault()
 }
-onkeydown = e => { edit(e, true); if ((e.key === 'r' || e.key === 'R') && !e.repeat) recToggle() }
+onkeydown = e => {
+  edit(e, true)
+  if ((e.key === 'r' || e.key === 'R') && !e.repeat) recToggle()
+  if (e.key === 'Backspace') { e.preventDefault(); if (!e.repeat) reset() }
+}
 onkeyup = e => edit(e, false)
 
 // --- Gamepad API: OR a connected pad into its player's word ---
@@ -220,7 +230,7 @@ function recToggle() {
 }
 
 // fixed 60 Hz step — games assume 60fps, so don't run faster on 120Hz+ displays
-let acc = 0, last
+let acc = 0, last, selHeld = 0
 function frame(t) {
   requestAnimationFrame(frame)
   if (!power || !sys) return
@@ -230,7 +240,10 @@ function frame(t) {
   let drew = false
   while (acc >= 16.6667) {
     acc -= 16.6667
-    const p1 = key[0] | padWord(0), p2 = key[1] | padWord(1)
+    const g1 = padWord(0), g2 = padWord(1), sel = (g1 | g2) & 512
+    if (sel && !selHeld) { selHeld = 1; reset(); break }
+    selHeld = sel
+    const p1 = key[0] | (g1 & ~512), p2 = key[1] | (g2 & ~512)
     sys.setInputs(0, p1); sys.setInputs(1, p2)
     if (rec) rec.push(p1 & 0xffff, p2 & 0xffff)
     out.set(sys.runFrame()); drew = true
