@@ -38,10 +38,24 @@
   #plate b{font-weight:800;letter-spacing:1.5px;color:#eef1f6;font-size:15px}
   #plate .tag{opacity:.5;font-size:11px;letter-spacing:.5px}
   #led{width:9px;height:9px;border-radius:50%;background:#ff2e3b;box-shadow:0 0 6px 1px #e60021}
-  /* controls legend */
-  #keys{display:flex;gap:26px;opacity:.8;font-size:12px}
-  #keys b{color:#9fd0ff;font-weight:600}
-  kbd{background:#23252c;border:1px solid #3a3d46;border-bottom-width:2px;border-radius:4px;padding:1px 5px;font:11px ui-monospace,monospace;color:#dfe3ea}
+  /* controls legend: one card per player, each row = what it does, then key -> console button */
+  #keys{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 14px;margin-top:-5px;font-size:13px;color:#cdd2da}
+  #keys .pl{display:grid;grid-template-columns:auto auto;gap:5px 12px;align-items:center;
+    background:#16181d;border:1px solid #2c2f37;border-radius:10px;padding:8px 14px}
+  #keys .pl h3{grid-column:1/-1;margin:0;font-size:13px;font-weight:700;letter-spacing:.5px;color:#eef1f6}
+  #keys .pl h3 small{font-weight:400;color:#8b919c;letter-spacing:0;margin-left:6px}
+  #keys .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:1px}
+  #keys .what{color:#8b919c;font-size:12px;text-align:right}
+  #keys .row{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
+  #keys .map{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+  #keys .map i{font-style:normal;color:#6c727d;font-size:11px}
+  /* console face buttons drawn as round pad buttons so they never read as keys */
+  #keys .btn{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;
+    font:700 11px system-ui,sans-serif;color:#fff;box-shadow:inset 0 -2px 0 rgba(0,0,0,.3)}
+  #keys .bA{background:#d63a3a} #keys .bB{background:#d6a62a} #keys .bX{background:#3a6fd6} #keys .bY{background:#2f9e55}
+  #keys .note{flex-basis:100%;text-align:center;font-size:12px;color:#8b919c}
+  kbd{display:inline-block;min-width:12px;text-align:center;background:#262830;border:1px solid #454852;border-bottom-width:3px;border-radius:5px;
+    padding:1px 6px;font:600 12px ui-monospace,monospace;color:#f0f2f6}
 </style>
 
 <div id="bar">
@@ -58,9 +72,17 @@
 <div id="plate"><i id="led"></i><b>CASTLESTATION</b><span class="tag">16-BIT · runs CastlePalm cartridges</span></div>
 
 <div id="keys">
-  <span>🟢 <b>P1</b> <kbd>W A S D</kbd> move · <kbd>Z</kbd>A <kbd>X</kbd>B <kbd>C</kbd>X <kbd>V</kbd>Y · <kbd>Q</kbd> start</span>
-  <span>🔴 <b>P2</b> <kbd>← ↑ → ↓</kbd> move · <kbd>.</kbd>A <kbd>/</kbd>B <kbd>;</kbd>X <kbd>'</kbd>Y · <kbd>Enter</kbd> start</span>
-  <span>· gamepads auto-map to P1/P2 · <kbd>R</kbd> record input</span>
+  <div class="pl">
+    <h3><span class="dot" style="background:#3ccf6a"></span>PLAYER 1 <small>keyboard</small></h3>
+    <span class="what">Move</span><span class="row"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span class="what" style="margin-left:14px">Start</span><kbd>Q</kbd></span>
+    <span class="what">Buttons</span><span class="row"><span class="map"><kbd>Z</kbd><i>→</i><span class="btn bA" title="A button">A</span></span><span class="map"><kbd>X</kbd><i>→</i><span class="btn bB" title="B button">B</span></span><span class="map"><kbd>C</kbd><i>→</i><span class="btn bX" title="X button">X</span></span><span class="map"><kbd>V</kbd><i>→</i><span class="btn bY" title="Y button">Y</span></span></span>
+  </div>
+  <div class="pl">
+    <h3><span class="dot" style="background:#ff3b47"></span>PLAYER 2 <small>keyboard</small></h3>
+    <span class="what">Move</span><span class="row"><kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd><span class="what" style="margin-left:14px">Start</span><kbd>Enter</kbd></span>
+    <span class="what">Buttons</span><span class="row"><span class="map"><kbd>.</kbd><i>→</i><span class="btn bA" title="A button">A</span></span><span class="map"><kbd>/</kbd><i>→</i><span class="btn bB" title="B button">B</span></span><span class="map"><kbd>;</kbd><i>→</i><span class="btn bX" title="X button">X</span></span><span class="map"><kbd>'</kbd><i>→</i><span class="btn bY" title="Y button">Y</span></span></span>
+  </div>
+  <div class="note">🎮 Gamepads connect as Player 1 and Player 2 automatically · <kbd>R</kbd> start/stop recording your inputs</div>
 </div>
 
 <script src="dist/castlepalm.js?v=72"></script>
